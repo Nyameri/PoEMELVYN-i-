@@ -14,3 +14,292 @@
 # Metadata
 *.aliases
 *.lvlps
+Author:  Edward M Nyameri  - Power over Ethernet Model
+ */]
+[comment encoding = UTF-8 /]
+[module javajpa('http://com.genmymodel.jpa/1.0', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[template public generate(m : Model)]
+[comment @main/]
+[getModel('')/] [comment : Load cache with decoy parameter/]
+[/template]
+
+[template public generate(entity : Entity)]
+[comment @main/]
+[file ('src/main/java/' + getPackage('').replaceAll('\\.', '/') + '/' + entity.name + '.java', false, 'UTF-8')]
+package [getPackage('')/];
+
+[entity.annotations.generate()->sep('\n')/]
+@javax.persistence.Entity
+@javax.annotation.Generated("com.genmymodel.jpa")
+public class [entity.name/] [if (entity._extends <> null)]extends [entity._extends.name/][else]implements java.io.Serializable[/if]
+{
+    private static final long serialVersionUID = 1L;
+
+    [entity.properties.generate()/]
+
+    [entity.references.generateReference()/]
+
+    [entity.properties.generateAccessors()/]
+
+    [entity.references.generateAccessors()/]
+}
+
+[/file]
+[/template]
+
+[template public generate(annotation : Annotation) post(trim())]
+@javax.persistence.[annotation.oclAsType(EObject).eClass().name/][annotation.oclAsType(EObject).generateProp()/]
+[/template]
+
+[template public generate(annotation : NamedQuery) post(trim())]
+@javax.persistence.[annotation.oclAsType(EObject).eClass().name/](name="[annotation.name/]", query="[annotation._query/]"[annotation.generateHints()/])
+[/template]
+
+[template public generateHints(nameQuery : NamedQuery)]
+[if (nameQuery.lockMode <> LockModeType::UNDEFINED)], lockMode=javax.persistence.LockModeType.[nameQuery.lockMode/][/if]
+[for (hint : QueryHint | nameQuery.hints) before (', hints={') separator(', ') after('}')]
+[hint.generate()/]
+[/for]
+[/template]
+
+[template public generate(annotation : NamedQueries) post(trim())]
+@javax.persistence.[annotation.oclAsType(EObject).eClass().name/](value={[annotation.value.generate()->sep(', \n')/]})
+[/template]
+
+[template public generate(t : Table) post(trim())]
+[let opts : Sequence(String) = Sequence{t.catalog(), t.name(), t.schema(), t.indexes(), t.uniqueConstraints()}]
+@javax.persistence.[t.oclAsType(EObject).eClass().name/](
+    [opts->reject(e | e ='')->sep(',\n\t')/]
+)[/let]
+[/template]
+
+[template public catalog(t : Table) ? (catalog <> null and catalog <> '')]
+catalog="[t.catalog/]"
+[/template]
+
+[template public catalog(t : JoinTable) ? (catalog <> null and catalog <> '')]
+catalog="[t.catalog/]"
+[/template]
+
+[template public name(t : Table) ? (name <> null and name <> '')]
+name="[t.name/]"
+[/template]
+
+[template public name(t : JoinTable) ? (name <> null and name <> '')]
+name="[t.name/]"
+[/template]
+
+[template public schema(t : Table) ? (schema <> null and schema <> '')]
+schema="[t.schema/]"
+[/template]
+
+[template public schema(t : JoinTable) ? (schema <> null and schema <> '')]
+schema="[t.schema/]"
+[/template]
+
+[template public indexes(t : Table)]
+[for (index : Index | t.indexesRef) before ('indexes={') separator(', ') after('}')][index.generate()/]
+[/for]
+[/template]
+
+[template public indexes(t : JoinTable)]
+[for (index : Index | t.indexes) before ('indexes={') separator(', ') after('}')][index.generate()/]
+[/for]
+[/template]
+
+[template public uniqueConstraints(t : Table)]
+[for (u : UniqueConstraint| t.uniqueConstraintsRef) before ('uniqueConstraints={') separator(', ') after('}')][u.generate()/]
+[/for]
+[/template]
+
+[template public uniqueConstraints(t : JoinTable)]
+[for (u : UniqueConstraint| t.uniqueConstraints) before ('uniqueConstraints={') separator(', ') after('}')][u.generate()/]
+[/for]
+[/template]
+
+[template public generate(a : AttributeOverrides)]
+@javax.persistence.AttributeOverrides(
+    {
+        [a.value.generate()->sep(',\n\t\t')/]
+    }
+)
+[/template]
+
+[template public generate(t : AttributeOverride)]
+@javax.persistence.[t.oclAsType(EObject).eClass().name/](
+    [for (prop : EAttribute | t.oclAsType(EObject).eClass().eAllAttributes->select(it | t.oclAsType(EObject).eIsSet(it) or it.lowerBound = 1)) separator(',\n')]
+    [prop.name/] = [prop.generatePropValue(t.oclAsType(EObject))/][/for],
+    column=[t.column.generate()/]
+)
+[/template]
+
+[comment JOINTABLE /]
+[template public generate(j : JoinTable) post(trim())]
+[let opts : Sequence(String) =
+                Sequence{
+                        j.catalog(), j.name(), j.schema(),
+                        j.indexes(), j.uniqueConstraints(),
+                        j.joinColumn(), j.inverseJoinColumns(),
+                        j.foreignKey(), j.inverseForeignKey()}]
+@javax.persistence.[j.oclAsType(EObject).eClass().name/](
+    [opts->reject(e | e ='')->sep(',\n\t')/]
+)[/let]
+[/template]
+
+[template public foreignKey(t : JoinTable) ? (t.foreignKey <> null)]
+foreignKey=[t.foreignKey.generate()/]
+[/template]
+
+[template public inverseForeignKey(t : JoinTable) ? (t.inverseForeignKey <> null)]
+inverseForeignKey=[t.inverseForeignKey.generate()/]
+[/template]
+
+[template public joinColumn(t : JoinTable)]
+[for (u : JoinColumn| t.joinColumns) before ('joinColumns={') separator(', ') after('}')][u.generate()/]
+[/for]
+[/template]
+
+[template public inverseJoinColumns(t : JoinTable)]
+[for (u : JoinColumn| t.inverseJoinColumns) before ('inverseJoinColumns={') separator(', ') after('}')][u.generate()/]
+[/for]
+[/template]
+
+[template public generate(t : JoinColumn) ? (t <> null)]
+@javax.persistence.[t.oclAsType(EObject).eClass().name/](
+[for (prop : EAttribute | t.oclAsType(EObject).eClass().eAllAttributes->select(it | t.oclAsType(EObject).eIsSet(it) or it.lowerBound = 1)) separator(',\n')]
+[prop.name/] = [prop.generatePropValue(t.oclAsType(EObject))/][/for]
+[if (t.foreignKey <> null)], foreignKey=[t.foreignKey.generate()/][/if]
+)
+[/template]
+
+
+[template public generateProp(eo : EObject)]
+[for (prop : EAttribute | eo.eClass().eAllAttributes->select(it | eo.eIsSet(it) or it.lowerBound = 1)) before ('(') separator(', ') after (')')]
+[prop.name/] = [prop.generatePropValue(eo)/][/for]
+
+[/template]
+
+[template public generatePropValue(prop : EAttribute, eo : EObject) post(trim())]
+[if (prop.oclIsKindOf(EAttribute))]
+    [if (prop.eType = EString)]
+        "[eo.eGet(prop)/]"
+    [elseif (prop.eType.oclIsKindOf(EEnum))]
+        javax.persistence.[prop.eType.name/].[eo.eGet(prop)/]
+    [else]
+        [eo.eGet(prop)/]
+    [/if]
+[/if]
+[/template]
+
+
+[template public generate(p : jpa::Property)]
+[p.annotations.generate()->sep('\n')/]
+private [p.type.instanceTypeName/] [p.name/];
+
+[/template]
+
+[template public generateAccessors(p : jpa::Property)]
+@javax.annotation.Generated("genmymodel.jpa.generator")
+public void set[p.name.toUpperFirst()/]([p.type.instanceTypeName/] [p.name/]) {
+    this.[p.name/] = [p.name/];
+}
+
+@javax.annotation.Generated("com.genmymodel.jpa")
+public [p.type.instanceTypeName/] get[p.name.toUpperFirst()/]() {
+    return this.[p.name/];
+}
+
+[/template]
+
+[template public generateReference(r : jpa::Reference)]
+
+[r.referenceAnnotation()/]
+[r.genCardinality()/] [r.name/];
+[/template]
+
+[template public generateAccessors(r : jpa::Reference)]
+@javax.annotation.Generated("com.genmymodel.jpa")
+public void set[r.name.toUpperFirst()/]([r.genCardinality()/] [r.name/]) {
+    this.[r.name/] = [r.name/];
+}
+
+@javax.annotation.Generated("com.genmymodel.jpa")
+public [r.genCardinality()/] get[r.name.toUpperFirst()/]() {
+    return this.[r.name/];
+}
+
+[/template]
+
+[template public genCardinality(r : jpa::Reference) post(trim())]
+[if (r.cardinality = jpa::CardinalityKind::OneToMany)]java.util.Collection<[r.referencedEntity.name/]>
+[elseif(r.cardinality = jpa::CardinalityKind::ManyToMany)]java.util.Collection<[r.referencedEntity.name/]>
+[else][r.referencedEntity.name/]
+[/if]
+[/template]
+
+[template public referenceAnnotation(r : jpa::Reference) post(trim())]
+[let opts : Sequence(String) = Sequence{r.mappedBy(), r.cascade(), r.fetch(), r.optional(), r.orphanRemoval()}]
+@javax.persistence.[r.cardinality/](
+    [opts->reject(e | e ='')->sep(',\n\t')/]
+)[/let]
+
+[for (a : Annotation | r.annotations)]
+[a.generate()/]
+[/for]
+[/template]
+
+[template public cascade(r : jpa::Reference)
+            ? (cascadeAll or cascadeDetach or cascadeMerge or cascadePersist or cascadeRefresh or cascadeRemove)
+            post(replaceAll('\n', ''))]
+[let casc : Sequence(String)
+            = Sequence{
+                if (cascadeAll) then 'javax.persistence.CascadeType.ALL' else '' endif,
+                if (cascadeDetach) then 'javax.persistence.CascadeType.DETACH' else '' endif,
+                if (cascadeMerge) then 'javax.persistence.CascadeType.MERGE' else '' endif,
+                if (cascadePersist) then 'javax.persistence.CascadeType.PERSIST' else '' endif,
+                if (cascadeRefresh) then 'javax.persistence.CascadeType.REFRESH' else '' endif,
+                if (cascadeRemove) then 'javax.persistence.CascadeType.REMOVE' else '' endif}]
+cascade = {[casc->reject(e | e ='')->sep(', ')/]}
+[/let]
+[/template]
+
+[template public mappedBy(r : jpa::Reference) ? (mappedBy <> null and mappedBy <> '')]
+mappedBy = "[r.mappedBy.name/]"
+[/template]
+
+[template public fetch(r : jpa::Reference) ? (fetch <> jpa::FetchType::UNDEFINED)]
+fetch = javax.persistence.FetchType.[r.fetch/]
+[/template]
+
+[template public optional(r : jpa::Reference) ? (
+    (r.cardinality = CardinalityKind::OneToOne
+    or r.cardinality = CardinalityKind::ManyToOne) and not optional)]
+optional = false
+[/template]
+
+[template public orphanRemoval(r : jpa::Reference) ? (
+    (r.cardinality = CardinalityKind::OneToMany or
+     r.cardinality = CardinalityKind::OneToOne
+    )and orphanRemoval)]
+orphanRemoval = true
+[/template]
+
+[template public qualifiedName(c : Entity)]
+[c.ancestors(NamedElement)->reverse().name.normalize()->including(c.name.normalize())->sep('.')/]
+[/template]
+
+[template public normalize(s : String)]
+[s.trim().tokenize().trim().toUpperFirst()/]
+[/template]
+
+[query public getPackage(s : String) : String =
+    if (''.getModel().jpaPackage = null or ''.getModel().jpaPackage = '')
+    then ''.getModel().name.toLower()
+    else ''.getModel().jpaPackage
+    endif
+/]
+
+[query public getModel(s : String) : Model =
+    Model.allInstances()->asOrderedSet()->first()
+/]
